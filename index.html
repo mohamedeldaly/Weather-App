@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      html {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background-color: #222;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      div {
+        background: linear-gradient(135deg, #00feba, #5b548a);
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        text-align: center;
+      }
+      input {
+        padding: 10px;
+        font-size: 20px;
+        margin: 20px;
+        border: none;
+        border-radius: 5px;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 20px;
+        background-color: #5b548a;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-right: 20px;
+        transition: background-color 0.3s ease;
+      }
+      button:hover {
+        background-color: #4a4374;
+      }
+      p {
+        color: #fff;
+        margin: 0px;
+        padding: 0px;
+      }
+      #temp {
+        font-size: 60px;
+      }
+      #city {
+        font-size: 45px;
+      }
+      img {
+        width: 35%;
+      }
+      #loader img {
+        width: 25%;
+        margin-bottom: 10px;
+      }
+      #loader {
+        display: none;
+      }
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+      }
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        -webkit-transition: 0.4s;
+        transition: 0.4s;
+      }
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        -webkit-transition: 0.4s;
+        transition: 0.4s;
+      }
+      input:checked + .slider {
+        background-color: #2196f3;
+      }
+      input:focus + .slider {
+        box-shadow: 0 0 1px #2196f3;
+      }
+      input:checked + .slider:before {
+        -webkit-transform: translateX(26px);
+        -ms-transform: translateX(26px);
+        transform: translateX(26px);
+      }
+      .slider.round {
+        border-radius: 34px;
+      }
+      .slider.round:before {
+        border-radius: 50%;
+      }
+      #fahrenheit {
+        font-size: 30px;
+      }
+      #celsius {
+        font-size: 30px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <input type="text" />
+      <button>search</button>
+      <p>
+        <label class="switch">
+          <input id="check" type="checkbox" />
+          <span class="slider round"></span>
+        </label>
+      </p>
+      <p id="fahrenheit">°F</p>
+      <p id="celsius">°C</p>
+      <p><img id="weatherState" src="" /></p>
+      <p id="temp"></p>
+      <p id="city"></p>
+      <p id="loader"><img src="loading.gif" /></p>
+    </div>
+    <script>
+      let toggleButton = document.querySelector("#check");
+      let globalWeatherData;
+      toggleButton.addEventListener("change", function () {
+        if (this.checked) {
+          document.querySelector("#fahrenheit").style.display = "none";
+          document.querySelector("#celsius").style.display = "block";
+        } else {
+          document.querySelector("#fahrenheit").style.display = "block";
+          document.querySelector("#celsius").style.display = "none";
+        }
+      });
+      function toggleTemp() {
+        if (toggleButton.checked) {
+          document.querySelector("#temp").textContent =
+            fahToCel(globalWeatherData.currentConditions.temp) + "°C";
+        } else {
+          document.querySelector("#temp").textContent =
+            globalWeatherData.currentConditions.temp + "°F";
+        }
+      }
+      function fahToCel(degree) {
+        let num = ((degree - 32) * 5) / 9;
+        return Math.round(num * 10) / 10;
+      }
+      document.querySelector("button").addEventListener("click", function () {
+        let city = document.querySelector("input").value.trim();
+        if (city) {
+          getWeather(city);
+        } else {
+          document.querySelector("#temp").textContent =
+            "Please enter a city name.";
+          document.querySelector("#city").textContent = "";
+        }
+      });
+      async function getWeather(city) {
+        showLoader();
+        try {
+          const weatherResponse = await fetch(
+            `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${encodeURIComponent(
+              city
+            )}?key=8VX97EDKZDMPJYRLNS8E6K8K4`,
+            { mode: "cors" }
+          );
+          const weatherData = await weatherResponse.json();
+          globalWeatherData = weatherData;
+          console.log(weatherData);
+          document.querySelector("#weatherState").src = await fetchGif(
+            weatherData.currentConditions.conditions.trim()
+          );
+          document.querySelector("#weatherState").alt =
+            weatherData.currentConditions.conditions;
+
+          toggleTemp();
+          toggleButton.addEventListener("change", toggleTemp);
+          document.querySelector("#city").textContent = city;
+        } catch (error) {
+          console.error("Error:", error);
+          toggleButton.removeEventListener("change", toggleTemp);
+          document.querySelector("#temp").textContent =
+            "Please enter a correct city name.";
+          document.querySelector("#city").textContent = "";
+          document.querySelector("#weatherState").src = "";
+          document.querySelector("#weatherState").alt = "";
+        } finally {
+          hideLoader();
+        }
+      }
+      async function fetchGif(query) {
+        try {
+          const response = await fetch(
+            `https://api.giphy.com/v1/gifs/translate?api_key=F8gkYFJUFrYKkRePeqZcmDJXH0fOa6xG&s=${encodeURIComponent(
+              query
+            )}`,
+            { mode: "cors" }
+          );
+          const responseData = await response.json();
+          if (responseData.data && responseData.data.images) {
+            return responseData.data.images.original.url;
+          } else {
+            alert("No GIF found for the given search term");
+          }
+        } catch (error) {
+          console.error("Error:", error);
+          alert(
+            "An error occurred while fetching the GIF. Please check your network or API key."
+          );
+        }
+      }
+      document
+        .querySelector("input")
+        .addEventListener("keypress", function (event) {
+          if (event.key === "Enter") {
+            document.querySelector("button").click();
+          }
+        });
+      function showLoader() {
+        document.querySelector("#temp").textContent = "";
+        document.querySelector("#city").textContent = "";
+        document.querySelector("#weatherState").src = "";
+        document.querySelector("#weatherState").alt = "";
+        document.querySelector("#loader").style.display = "block";
+      }
+      function hideLoader() {
+        document.querySelector("#loader").style.display = "none";
+      }
+    </script>
+  </body>
+</html>
